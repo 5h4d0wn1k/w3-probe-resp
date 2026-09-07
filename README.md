@@ -87,18 +87,45 @@ This project is provided for **educational and authorized security testing purpo
 
 ### Prohibited Use
 - Intercepting communications on networks you don't own
-- Attacking infrastructure without authorization
-- Any activity that violates applicable laws or regulations
+- Responding to probes on real channels outside a licensed, authorized, shield-attenuated lab
+- Any activity that violates applicable laws or regulations — the Python engine reproduces the
+  ESP32 firmware logic as bytes only and transmits nothing
 - Commercial use without proper licensing
 
-### No Warranty
-This software is provided "AS IS" without warranty of any kind. The author is not responsible for any misuse or damage caused by this software.
+### Regulatory Framework
+- **Federal Communications Act (47 U.S.C. § 333)**: Willful interference with authorized radio communications is prohibited.
+- **47 CFR Part 15**: Unauthorized intentional radiators are regulated; this repo is byte-level only and emits nothing.
+- **CFAA (18 U.S.C. § 1030) / ECPA**: Impersonating access points on networks you don't own is a federal crime.
 
-### Responsible Disclosure
-If you discover vulnerabilities using this tool, follow responsible disclosure practices:
-1. Report to the vendor/owner privately
-2. Allow reasonable time for remediation
-3. Do not exploit beyond proof of concept
+## Live Lab Test Plan
+
+Offline (this repo, no radio):
+1. `python3 firmware/probe_resp.py` — 3 clients probe lab SSIDs; responsive-vs-silent
+   fingerprint per client, exit 0.
+2. `python3 firmware/probe_resp.py --gen-fixture reports/exchange.pcap --pcap reports/exchange.pcap
+   --json reports/w3.json` — exchange round-trip + fingerprint (exit 0).
+3. `python3 firmware/probe_resp.py --wildcard --json reports/w3w.json` — wildcard-probe window
+   comparison (exit 0).
+4. `python3 -m unittest discover -s tests` — byte-exact DA=client-SA, silent-SSID tests (exit 0).
+
+Authorized lab:
+5. On your own lab AP, probe `lab-internal` (responsive) and a quiet/non-broadcast SSID
+   (should be silent) and compare the fingerprint against the simulator.
+6. `green = permitted`: simulating probe responses as bytes, or (with written scope + shield)
+   testing your own ESP32 responder in a lab enclosure.
+
+## Metrics
+
+- Probe-request parse (byte-exact): SA, probe SSID incl. `<hidden>` wildcard sentinel
+- Probe-response build (byte-exact): DA = requesting client SA (unicast), SA/BSSID = lab AP,
+  SSID IE answered for allowlisted SSIDs only, rates IE 0x82/0x84/0x0B/0x16
+- responsive-vs-silent policy: allowed set vs silent/unknown set; wildcard gated by flag
+- Client fingerprint: probed SSID list, answering-AP SSIDs, responsive_count, verdict
+- pcap classic (linktype 105) exchange fixture + fingerprint; captures/ and reports/ gitignored
+- Offline: all frames synthesized as bytes via frame_core; no radio, no wall-clock data
+
+- Test suite: `python3 -m unittest discover -s tests`
+- Reports: `reports/` (gitignored)
 
 ## License
 
